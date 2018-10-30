@@ -1,6 +1,6 @@
-### Flask Rest Api and some templates.
+### Flask Rest Api
 
-#### Running application
+#### Steps:
 
 
 + Install packages:
@@ -11,12 +11,22 @@
 + Running migrations:
   * Enter in python console.
   * Enter this commands in python terminal:
-  ```python migrations.py db init```
-  ```python migrations.py db migrate```
-  ```python migrations.py db upgrade```
+  ```
+     python migrations.py db init
+     python migrations.py db migrate
+     python migrations.py db upgrade
+  ```
+  
   Obs: Just to undo last migrations:
   ```python migrations.py db downgrade```
   
 
 + Running application:
   * ```python app.py```
+
+
++ Todo:
+  - [ ] - Implementar todos os métodos Rest para os modelos.
+  - [ ] - Separar módulos pastas.
+  - [ ] - Criar arquivo de configuração.
+
