@@ -5,9 +5,9 @@ from model import User, UserSchema, Note, NoteSchema
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
 db = SQLAlchemy(app)
-ma = Marshmallow(app)
 
 #schemas
 user_schema = UserSchema()
@@ -19,7 +19,16 @@ notes_schema = NoteSchema(many=True)
 #routes
 @app.route("/")
 def index():
-    return "Hello"
+    
+    return jsonify({'message': 'hello world'}), 200
+
+
+@app.route("/users", methods=["GET"])
+def get_user():
+    users = User.query.all()
+    result = users_schema.dump(users)
+    
+    return jsonify({'users': result})
 
 
 @app.route("/user", methods=["POST"])
@@ -35,17 +44,16 @@ def add_user():
     return user_schema.jsonify(new_user)
 
 
-@app.route("/users", methods=["GET"])
-def get_user():
-    all_users = User.query.all()
-    result = users_schema.dump(all_users)
-    return jsonify(result.data)
-
-
-@app.route("/user/<id>", methods=["GET"])
-def user_detail(id):
-    user = User.query.get(id)
-    return user_schema.jsonify(user)
+@app.route('/user/<int:pk>')
+def get_users(pk):
+    try:
+        user = User.query.get(pk)
+    except IntegrityError:
+        return jsonify({'message': 'User could not be found.'}), 400
+        
+    user_result = user_schema.dump(user)
+    notes_result = notes_schema.dump(user.notes.all())
+    return jsonify({'user': user_result, 'notes': notes_result})
 
 
 @app.route("/user/<id>", methods=["PUT"])
@@ -58,6 +66,7 @@ def user_update(id):
     user.username = username
 
     db.session.commit()
+    
     return user_schema.jsonify(user)
 
 
@@ -81,23 +90,25 @@ def add_note():
     db.session.add(new_note)
     db.session.commit()
 
-    return user_schema.jsonify(new_note)
+    return note_schema.jsonify(new_note)
 
 
 @app.route("/notes", methods=["GET"])
 def get_notes():
-    all_notes = Note.query.all()
-    result = notes_schema.dump(all_notes)
-    return jsonify(result.data)
+    notes = Note.query.all()
+    result = notes_schema.dump(notes, many=True)
     
+    return jsonify({'notes': result})
     
-@app.route("/note/<id>", methods=["DELETE"])
-def note_delete(id):
-    note = Note.query.get(id)
-    db.session.delete(note)
-    db.session.commit()
 
-    return user_schema.jsonify(note)
+@app.route('/note/<int:pk>')
+def get_note(pk):
+    try:
+        note = Note.query.get(pk)
+    except IntegrityError:
+        return jsonify({'message': 'Quote could not be found.'}), 400
+    result = note_schema.dump(note)
+    return jsonify({'note': result})
 
 
 #__init__

@@ -15,7 +15,7 @@
   ```python migrations.py db migrate```
   ```python migrations.py db upgrade```
   Obs: Just to undo last migrations:
-  ```python migrations.py db init```
+  ```python migrations.py db downgrade```
   
 
 + Running application:
