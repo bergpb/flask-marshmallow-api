@@ -12,6 +12,8 @@ flask-marshmallow = "*"
 marshmallow-sqlalchemy = "*"
 flask-migrate = "*"
 flask-script = "*"
+flask-bcrypt = "*"
+flask-login = "*"
 
 [requires]
 python_version = "3.5"
