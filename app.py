@@ -1,14 +1,10 @@
 from os import urandom
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, request, session, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from model import User, UserSchema, Note, NoteSchema
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
-
-# https://marshmallow.readthedocs.io/en/3.0/examples.html
-# https://github.com/jeffknupp/bull/blob/develop/bull/bull.py
-# https://realpython.com/using-flask-login-for-user-management-with-flask/
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
@@ -27,8 +23,8 @@ note_schema = NoteSchema()
 notes_schema = NoteSchema(many=True)
 
 @login_manager.user_loader
-def load_user(user_id):
-    return User.query.filter_by(id = user_id).first()
+def load_user(user_email):
+    return User.query.filter_by(email = user_email).first()
 
 #routes
 @app.route("/login", methods=["POST"])
@@ -37,9 +33,10 @@ def login():
     For POSTS, login the current user by processing the form.
     """
     user = User.query.filter_by(username = request.json['username']).first()
+    password = request.json['password']
     
-    if user != None:
-        if bcrypt.check_password_hash(user.password, request.json['password']):
+    if user != None and password != None:
+        if bcrypt.check_password_hash(user.password, password):
             login_user(user)
             return jsonify({'message': 'User authenticated'}), 200
         else:
@@ -51,21 +48,23 @@ def login():
 @app.route("/logout", methods=["GET"])
 @login_required
 def logout():
-    """Logout the current user."""
-    user = current_user
-    user.authenticated = False
-    db.session.add(user)
-    db.session.commit()
     logout_user()
-    
     
     return jsonify({'message': 'user logout'}), 200
     
+
+@login_manager.unauthorized_handler
+def unauthorized_handler():
+    
+    return jsonify({'message': 'Unauthorized, please login!'}), 400
+    
     
 @app.route("/")
+@login_required
 def index():
     
     return jsonify({'message': 'hello world'}), 200
+
 
 
 @app.route("/users", methods=["GET"])
@@ -73,27 +72,26 @@ def index():
 def get_user():
     users = User.query.all()
     result = users_schema.dump(users)
+    
     return jsonify({'users': result})
     
-
 
 @app.route("/user", methods=["POST"])
 def add_user():
     username = request.json['username']
     email = request.json['email']
-    authenticated = False
     password = bcrypt.generate_password_hash(request.json['password'])
     
-    new_user = User(username, email, password, authenticated)
+    new_user = User(username, email, password)
 
     db.session.add(new_user)
     db.session.commit()
     
-
     return user_schema.jsonify(new_user)
 
 
 @app.route('/user/<int:pk>')
+@login_required
 def get_users(pk):
     try:
         user = User.query.get(pk)
@@ -103,11 +101,11 @@ def get_users(pk):
     user_result = user_schema.dump(user)
     notes_result = notes_schema.dump(user.notes.all())
     
-    
     return jsonify({'user': user_result, 'notes': notes_result})
 
 
 @app.route("/user/<id>", methods=["PUT"])
+@login_required
 def user_update(id):
     user = User.query.get(id)
     username = request.json['username']
@@ -118,21 +116,21 @@ def user_update(id):
 
     db.session.commit()
     
-    
     return user_schema.jsonify(user)
 
 
 @app.route("/user/<id>", methods=["DELETE"])
+@login_required
 def user_delete(id):
     user = User.query.get(id)
     db.session.delete(user)
     db.session.commit()
-    
 
     return user_schema.jsonify(user)
     
     
 @app.route("/note", methods=["POST"])
+@login_required
 def add_note():
     title = request.json['title']
     description = request.json['description']
@@ -142,28 +140,27 @@ def add_note():
 
     db.session.add(new_note)
     db.session.commit()
-    
 
     return note_schema.jsonify(new_note)
 
 
 @app.route("/notes", methods=["GET"])
+@login_required
 def get_notes():
     notes = Note.query.all()
     result = notes_schema.dump(notes, many=True)
-    
     
     return jsonify({'notes': result})
     
 
 @app.route('/note/<int:pk>')
+@login_required
 def get_note(pk):
     try:
         note = Note.query.get(pk)
     except IntegrityError:
         return jsonify({'message': 'Quote could not be found.'}), 400
     result = note_schema.dump(note)
-    
     
     return jsonify({'note': result})
 
