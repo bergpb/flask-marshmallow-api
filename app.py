@@ -8,12 +8,11 @@ from flask_login import LoginManager, login_required, login_user, logout_user, c
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
+db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
-
-db = SQLAlchemy(app)
 
 #schemas
 user_schema = UserSchema()
@@ -29,9 +28,6 @@ def load_user(user_email):
 #routes
 @app.route("/login", methods=["POST"])
 def login():
-    """For GET requests, display the login form.
-    For POSTS, login the current user by processing the form.
-    """
     user = User.query.filter_by(username = request.json['username']).first()
     password = request.json['password']
     
@@ -60,20 +56,18 @@ def unauthorized_handler():
     
     
 @app.route("/")
-@login_required
+#@login_required
 def index():
-    
-    return jsonify({'message': 'hello world'}), 200
+    return jsonify({ 'message': 'Hello world' }), 200
 
 
 
 @app.route("/users", methods=["GET"])
-@login_required
+#@login_required
 def get_user():
     users = User.query.all()
     result = users_schema.dump(users)
-    
-    return jsonify({'users': result})
+    return jsonify({ 'message': result.data }), 200
     
 
 @app.route("/user", methods=["POST"])
@@ -91,21 +85,20 @@ def add_user():
 
 
 @app.route('/user/<int:pk>')
-@login_required
+#@login_required
 def get_users(pk):
-    try:
-        user = User.query.get(pk)
-    except IntegrityError:
-        return jsonify({'message': 'User could not be found.'}), 400
-        
-    user_result = user_schema.dump(user)
-    notes_result = notes_schema.dump(user.notes.all())
+    user = User.query.get(pk)
     
-    return jsonify({'user': user_result, 'notes': notes_result})
-
+    if user != None:
+        result = user_schema.dump(user)
+        return jsonify({ 'message': result.data }), 200
+        
+    else:
+        return jsonify({'message': 'User not found.'}), 404
+        
 
 @app.route("/user/<id>", methods=["PUT"])
-@login_required
+#@login_required
 def user_update(id):
     user = User.query.get(id)
     username = request.json['username']
@@ -120,7 +113,7 @@ def user_update(id):
 
 
 @app.route("/user/<id>", methods=["DELETE"])
-@login_required
+#@login_required
 def user_delete(id):
     user = User.query.get(id)
     db.session.delete(user)
@@ -130,7 +123,7 @@ def user_delete(id):
     
     
 @app.route("/note", methods=["POST"])
-@login_required
+#@login_required
 def add_note():
     title = request.json['title']
     description = request.json['description']
@@ -145,7 +138,7 @@ def add_note():
 
 
 @app.route("/notes", methods=["GET"])
-@login_required
+#@login_required
 def get_notes():
     notes = Note.query.all()
     result = notes_schema.dump(notes, many=True)
@@ -154,16 +147,16 @@ def get_notes():
     
 
 @app.route('/note/<int:pk>')
-@login_required
+#@login_required
 def get_note(pk):
-    try:
-        note = Note.query.get(pk)
-    except IntegrityError:
-        return jsonify({'message': 'Quote could not be found.'}), 400
-    result = note_schema.dump(note)
+    note = Note.query.get(pk)
     
-    return jsonify({'note': result})
-
+    if note != None:
+        result = note_schema.dump(note)
+        return jsonify({'message': result.data }), 200
+        
+    else:
+        return jsonify({'message': 'Note not found.'}), 404
 
 #__init__
 if __name__ == '__main__':
